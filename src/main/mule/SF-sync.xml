@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:batch="http://www.mulesoft.org/schema/mule/batch"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd 
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd 
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd">
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="53c3c5db-3385-46ea-a1ba-1e07f8e1cde7" >
+		<db:my-sql-connection host="127.0.0.1" port="3306" user="root" password="arpita27" database="abc"/>
+	</db:config>
+	<salesforce:sfdc-config name="Salesforce_Config" doc:name="Salesforce Config" doc:id="052ea64d-5730-4fa2-bf1a-ded7ce9f981f" >
+		<salesforce:basic-connection username="arpita@apisero.com" password="arpi@@@sales3!!" securityToken="dCsmJBzVeAGCovNly9duRTpe" url="https://login.salesforce.com/services/Soap/u/50.0"/>
+	</salesforce:sfdc-config>
+	<flow name="DBSalesforceSync" doc:id="4e6f71e8-a38c-4911-8236-61105a7f1baa" initialState="started">
+		<db:select doc:name="Select" doc:id="e1269b45-73b1-4db9-a000-b88261ebc580" config-ref="Database_Config">
+			<db:sql ><![CDATA[select * from employees;]]></db:sql>
+		</db:select>
+		<ee:transform doc:name="Message" doc:id="b5a89f76-d025-46b5-a98d-8dca0c2e57fc">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload map(item,index)->{
+	name : item.Name,
+	ID : 123,
+	email :item.email,
+	project: item.project,
+	city:item.city,
+	manager: item.manager
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="d9abe913-2a4a-48d7-9998-6755b3f1a9d7" message="#[payload]"/>
+		<batch:job jobName="syncWithSalesforce" doc:id="c31b3e2b-31cf-45f0-9c33-e5651261c43e" >
+			<batch:process-records >
+				<batch:step name="isRecordinSalesforce" doc:id="75b9086f-e0a3-4ced-9c47-5f0a504a320f" >
+					<salesforce:query doc:name="Query" doc:id="3bcf8565-7f2b-4045-b6e9-6945fa261050" config-ref="Salesforce_Config" target="exists" targetValue="#[sizeOf(payload as Array) &gt; 0]">
+						<salesforce:salesforce-query ><![CDATA[select ID__c from ABC__c where ID__c = ':cID']]></salesforce:salesforce-query>
+						<salesforce:parameters ><![CDATA[#[output application/java
+---
+{
+	"cID" : payload.ID
+}]]]></salesforce:parameters>
+					</salesforce:query>
+					<logger level="INFO" doc:name="Logger" doc:id="bab71d6e-65bf-4ea0-980f-8da026cbf37a" message="payload"/>
+				</batch:step>
+				<batch:step name="writeToSalesforce" doc:id="c910ba5c-0706-4595-8c0b-e3fc23a7fda4" acceptExpression="#[not vars.exists]">
+					<batch:aggregator doc:name="Batch Aggregator" doc:id="35a0afe5-a245-48d4-a7ee-bdfbb23bbf34" size="3">
+						<salesforce:create type="ABC__c" doc:name="Create" doc:id="f02c2d8e-c617-4f0f-862e-976b9cf2397c" config-ref="Salesforce_Config"/>
+						<logger level="INFO" doc:name="Logger" doc:id="da7de407-26d0-4057-8254-82163361221c" message="payload"/>
+					</batch:aggregator>
+				</batch:step>
+				<batch:step name="updateSalesforce" doc:id="171692c1-da89-4036-b987-6908e5b81642" >
+					<batch:aggregator doc:name="Batch Aggregator" doc:id="27a9dbb3-69c7-4a99-ac9d-97d729fd11e9" size="3">
+						<salesforce:upsert objectType="ABC__c" externalIdFieldName="ID" doc:name="Upsert" doc:id="7fb79556-9b00-4111-bde7-12aa57496e19" config-ref="Salesforce_Config"/>
+					</batch:aggregator>
+				</batch:step>
+			
+</batch:process-records>
+			<batch:on-complete >
+				<logger level="INFO" doc:name="Logger" doc:id="39d7f76f-b252-4de9-a05d-89c2289723be" message="app synched" />
+			</batch:on-complete>
+		</batch:job>
+		<ee:transform doc:name="Transform Message" doc:id="6bb2ae30-a353-4b5a-8b54-c17499315bcf" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message : "SYNC"
+	
+	}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	
+</flow>
+	</mule>

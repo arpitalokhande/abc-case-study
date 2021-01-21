@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:email="http://www.mulesoft.org/schema/mule/email"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/email/current/mule-email.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+	<sub-flow name="ErrorMail" doc:id="d33d7fea-9701-46a2-a225-166adb65f1ac" >
+				<set-variable value="#[error.description]" doc:name="ErrorVar" doc:id="5a3ccf04-98a0-408f-8e09-dc6aa27a1dfa" variableName="ErrorVar" />
+		<set-payload value='#[%dw 2.0
+output application/xml
+---
+html: {
+	body:{
+		div: "Hello",
+		br: [null],
+		div: "Following Error has occured.",
+		br: [null],
+		div: error.message,
+		div: error.description,
+		br: [null],
+		div: "Note: This is auto-generated mail. Please Do not Reply"
+			
+			
+	}
+}]' doc:name="Mail Template" doc:id="b2362439-9e27-4258-8e4d-e08733289ea5" />
+				<email:send doc:name="Send" doc:id="c6282fdb-a994-4796-b25c-52b6833625ff" config-ref="Email_SMTP" fromAddress="lnd.rs@apisero.com" subject="Error Occured in LnD Automation">
+					<email:to-addresses>
+						<email:to-address value="arpita.lokhande@apisero.com" />
+					
+</email:to-addresses>
+					<email:body contentType="text/html">
+						<email:content><![CDATA[#[%dw 2.0
+output application/xml
+---
+payload]]]></email:content>
+					</email:body>
+				</email:send>
+				<logger level="INFO" doc:name="Error Mail Sent Successfully" doc:id="87c93039-c035-4f63-84dd-8cdb6adb4a39" message="Error Mail Sent Successfully"/>
+	</sub-flow>
+</mule>

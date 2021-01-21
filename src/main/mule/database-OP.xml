@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="092ae9f2-cf25-45f1-8ac9-856a0f5a395e">
+		<http:listener-connection host="0.0.0.0" port="8080" />
+	</http:listener-config>
+	<flow name="CreateRecord" doc:id="edc94d0b-0ddf-4ceb-ab9e-b0880dc98c82" >
+		<db:select doc:name="Select" doc:id="f54e76d6-8ac9-461b-8cb3-fbc725676998" >
+			<db:sql ><![CDATA[select access from users where user = :cuser;]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	cuser: attributes.queryParams.user
+}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="7d33c8bf-4697-4671-97c6-a29ea1a94930" >
+			<when expression='#[payload=="admin"]'>
+				<db:insert doc:name="Insert" doc:id="8f930987-7a45-448e-9637-6f0b12b3510a" config-ref="Database_Config">
+			<db:sql><![CDATA[Insert into Employees(ID,name,email,age,city,project,manager) values(:ID,:name,:email,:age,:city,:project,:manager);]]></db:sql>
+			<db:input-parameters><![CDATA[#[{
+	ID: 7,
+	name: "Jack",
+	email: "jack@gmail.com",
+	age: 24,
+	city: "Pune",
+	project: "MT6",
+	manager: "Mary"
+}]]]></db:input-parameters>
+		</db:insert>
+			</when>
+			
+			<otherwise >
+				<set-payload value="No Admin" doc:name="No Admin" doc:id="ea3fe689-b6cb-4f7f-ae38-40323e12665f" />
+			</otherwise>
+		</choice>
+		<logger level="INFO" doc:name="Record Created" doc:id="b17f66d4-c928-465a-9257-9a587849b798" message="Record Created"/>
+		<error-handler >
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="f205ff1e-37f8-4d55-86b0-51ae7b36e433" >
+				<flow-ref doc:name="Flow Reference" doc:id="a53cbe1b-69e4-4152-9d13-ced91b422352" name="ErrorMail"/>
+			</on-error-continue>
+		</error-handler>
+	</flow>
+	<flow name="UpdateRecord" doc:id="6c19d794-957a-40b6-8788-fc9d840885c3" >
+		<db:select doc:name="Select" doc:id="771b607f-8df4-4546-9de0-c92f6bf6df63" >
+			<db:sql ><![CDATA[select access from users where user = :cuser;]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	cuser: attributes.queryParams.user
+}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="5294d01d-ce2c-4389-a1b9-f67ed41b7185" >
+			<when expression='#[payload=="admin"]'>
+			<db:update doc:name="Update" doc:id="bb635275-6614-4274-a512-573aa8113fe1" config-ref="Database_Config">
+			<db:sql><![CDATA[UPDATE `employees` SET `name` = 'Lokhande' WHERE `employees`.`ID` = '1';]]></db:sql>
+		</db:update>/&gt;
+		</when>
+			<otherwise >
+				<set-payload value="No Admin" doc:name="No Admin" doc:id="01f85789-725f-4fb6-b04e-869cef34b8f1" />
+			</otherwise>
+		</choice>
+		<logger level="INFO" doc:name="Record Updated" doc:id="f56d64e5-77a2-4342-a0fa-3665b751ce8b" message="Record Updated"/>
+	
+</flow>
+	<flow name="DeleteRecord" doc:id="730dc18a-0d83-41cc-be65-47ce4fcf4008" >
+		<db:select doc:name="Select" doc:id="4fd62311-8011-4629-9f18-4cf3b5cb2f50" >
+			<db:sql ><![CDATA[select access from users where user = :cuser;]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	cuser: attributes.queryParams.user
+}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="71e7481f-09b5-493d-86cb-30bcd3f961b8" >
+			<when expression='#[payload=="admin"]'>
+				<db:delete doc:name="Delete" doc:id="5a82c4e9-e0aa-4524-b997-b7367d1fd89d" config-ref="Database_Config">
+					<db:sql ><![CDATA[DELETE FROM employees WHERE ID = :cID;]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{cID: attributes.queryParams.ID}]]]></db:input-parameters>
+				</db:delete>/&gt;
+		
+</when>
+			<otherwise >
+				<set-payload value="No Admin" doc:name="No Admin" doc:id="0178665e-aa2c-448b-91db-3db1d84dd37c" />
+			</otherwise>
+		</choice>
+		<logger level="INFO" doc:name="Record Deleted" doc:id="f0c3c981-48a7-4f8f-89bb-fef6b28fbf41" message="Record Deleted"/>
+	
+</flow>
+<flow name="RetriveRecord" doc:id="2e47295f-77b6-4385-8646-ec442acb0c94" >
+		<db:select doc:name="Select" doc:id="0350c1a1-8557-435b-af88-d572db6e0284" >
+			<db:sql ><![CDATA[select access from users where user = :cuser;]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	cuser: attributes.queryParams.user
+}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="d918b952-d52c-4eb8-9b68-b8874ea7862a" >
+			<when expression='#[payload=="admin"]'>
+				<db:select doc:name="Select" doc:id="09a362b4-46a8-4130-b66a-7e215fbb682e" config-ref="Database_Config">
+			<db:sql><![CDATA[SELECT * FROM employees where ID=:cID;]]></db:sql>
+			<db:input-parameters><![CDATA[#[{cID: attributes.queryParams.ID}]]]></db:input-parameters>
+		</db:select>
+/&gt;
+		
+</when>
+			<otherwise >
+				<set-payload value="No Admin" doc:name="No Admin" doc:id="a116668a-cf24-4881-908a-04a2b275c4b6" />
+			
+</otherwise>
+		</choice>
+		<logger level="INFO" doc:name="Record Deleted" doc:id="c606a445-bccb-47cf-aafe-44eacaa07fd5" message="Record Deleted"/>
+	
+</flow>
+</mule>
